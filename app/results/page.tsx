@@ -9,6 +9,7 @@ export default function ResultsPage() {
   const [data, setData] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [showRisk, setShowRisk] = useState(false);
 
   async function runAnalysis(rewriteStyle?: string) {
     try {
@@ -21,7 +22,6 @@ export default function ResultsPage() {
 
       if (!content || !type || !goal) {
         setError("Missing conversation context");
-        setLoading(false);
         return;
       }
 
@@ -44,48 +44,77 @@ export default function ResultsPage() {
     runAnalysis();
   }, []);
 
-  if (error) {
-    return <p className="p-6 text-red-500">{error}</p>;
-  }
-
-  if (loading || !data) {
-    return <p className="p-6">Analyzing conversation…</p>;
-  }
+  if (error) return <p className="p-6 text-red-500">{error}</p>;
+  if (loading || !data) return <p className="p-6">Analyzing conversation…</p>;
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6 space-y-4">
-      <Card title="🧠 What’s happening">
-        {data.summary}
-      </Card>
+    <main className="min-h-screen bg-gray-50 p-4 space-y-6 max-w-2xl mx-auto">
 
+      {/* WHAT’S HAPPENING */}
+      <Section title="What’s happening">
+        <p className="text-base leading-relaxed">
+          {truncate(data.summary, 2)}
+        </p>
+      </Section>
+
+      {/* RISK (COLLAPSIBLE) */}
       {data.risk && (
-        <Card title="⚠️ Potential Risk">
-          {data.risk}
-        </Card>
+        <Section title="Potential Risk">
+          <button
+            onClick={() => setShowRisk(!showRisk)}
+            className="text-sm text-blue-600 mb-2"
+          >
+            {showRisk ? "Hide risk ▲" : "Show risk ▼"}
+          </button>
+
+          {showRisk && (
+            <p className="text-base leading-relaxed">
+              {truncate(data.risk, 3)}
+            </p>
+          )}
+        </Section>
       )}
 
-      <Card
-        title="✅ Best Reply"
-        highlight
-        copyText={data.best_reply}
-      >
-        {data.best_reply}
+      {/* BEST REPLY */}
+      <section className="bg-blue-50 border border-blue-400 rounded-xl p-4 space-y-3">
+        <h3 className="font-semibold text-lg">Best Reply</h3>
+
+        <p className="text-lg leading-relaxed whitespace-pre-wrap">
+          {truncate(data.best_reply, 4)}
+        </p>
+
+        {/* PRIMARY ACTION */}
+        <button
+          onClick={() => navigator.clipboard.writeText(data.best_reply)}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold text-base sticky bottom-4"
+        >
+          ✅ Copy this reply & send
+        </button>
 
         <RewriteButtons onRewrite={runAnalysis} />
-      </Card>
+      </section>
 
-      <Card
-        title="🔁 Alternative Reply"
-        copyText={data.alternative_reply}
-      >
-        {data.alternative_reply}
-      </Card>
+      {/* ALTERNATIVE */}
+      <Section title="Alternative Reply">
+        <p className="text-base leading-relaxed whitespace-pre-wrap">
+          {truncate(data.alternative_reply, 4)}
+        </p>
+      </Section>
 
-      <Card title="🚫 Avoid Saying">
-        {data.avoid_saying}
-      </Card>
+      {/* AVOID SAYING */}
+      <Section title="Avoid Saying">
+        <p className="text-base">{data.avoid_saying}</p>
+      </Section>
     </main>
   );
+}
+
+/* =====================
+   HELPERS
+===================== */
+
+function truncate(text: string, lines = 4) {
+  return text.split("\n").slice(0, lines).join("\n");
 }
 
 /* =====================
@@ -103,10 +132,8 @@ function RewriteButtons({
 
   async function handleRewrite(style: string) {
     if (loading) return;
-
     setActive(style);
     setLoading(true);
-
     try {
       await onRewrite(style);
     } finally {
@@ -115,64 +142,40 @@ function RewriteButtons({
   }
 
   return (
-    <div className="flex flex-wrap gap-2 mt-3 items-center">
+    <div className="flex flex-wrap gap-2 pt-2">
       {styles.map((style) => (
         <button
           key={style}
           onClick={() => handleRewrite(style)}
-          disabled={loading}
-          className={`text-xs px-3 py-1 rounded-full border transition
+          className={`text-sm px-3 py-1 rounded-full border
             ${
               active === style
-                ? "border-blue-500 bg-blue-50 text-blue-700"
+                ? "border-blue-500 bg-blue-100 text-blue-700"
                 : "border-gray-300"
-            }
-            ${loading ? "opacity-50 cursor-not-allowed" : "hover:border-blue-400"}
-          `}
+            }`}
         >
           {style}
         </button>
       ))}
-
-      {loading && (
-        <span className="text-xs text-gray-500 ml-2">
-          Updating…
-        </span>
-      )}
     </div>
   );
 }
 
 /* =====================
-   CARD COMPONENT
+   SECTION COMPONENT
 ===================== */
 
-function Card({
+function Section({
   title,
   children,
-  highlight = false,
-  copyText,
 }: {
   title: string;
   children: React.ReactNode;
-  highlight?: boolean;
-  copyText?: string;
 }) {
   return (
-    <div
-      className={`rounded-xl bg-white p-4 shadow-sm ${
-        highlight ? "border-2 border-blue-500" : "border"
-      }`}
-    >
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="font-semibold">{title}</h3>
-        {copyText && <CopyButton text={copyText} />}
-      </div>
-
-      {/* IMPORTANT: use div, not p */}
-      <div className="text-gray-700 whitespace-pre-wrap text-sm space-y-2">
-        {children}
-      </div>
-    </div>
+    <section className="bg-white rounded-xl p-4 space-y-2">
+      <h3 className="font-semibold text-base">{title}</h3>
+      {children}
+    </section>
   );
 }
