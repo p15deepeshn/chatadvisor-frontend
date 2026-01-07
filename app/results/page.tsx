@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyzeConversation } from "@/services/analyze";
 import { AnalysisResult } from "@/types/analysis";
 
@@ -25,6 +25,8 @@ export default function ResultsPage() {
     hint?: string;
   }>(null);
 
+  const stepTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   async function runAnalysis(rewriteStyle?: string) {
     try {
       setLoading(true);
@@ -43,7 +45,7 @@ export default function ResultsPage() {
         return;
       }
 
-      const stepTimer = setInterval(() => {
+      stepTimerRef.current = setInterval(() => {
         setStepIndex((prev) =>
           prev < loadingSteps.length - 1 ? prev + 1 : prev
         );
@@ -56,7 +58,6 @@ export default function ResultsPage() {
         rewriteStyle
       );
 
-      clearInterval(stepTimer);
       setData(result);
     } catch {
       setError({
@@ -64,12 +65,19 @@ export default function ResultsPage() {
         hint: "Try again or paste fewer messages.",
       });
     } finally {
+      if (stepTimerRef.current) {
+        clearInterval(stepTimerRef.current);
+        stepTimerRef.current = null;
+      }
       setLoading(false);
     }
   }
 
   useEffect(() => {
     runAnalysis();
+    return () => {
+      if (stepTimerRef.current) clearInterval(stepTimerRef.current);
+    };
   }, []);
 
   /* =====================
@@ -81,6 +89,7 @@ export default function ResultsPage() {
       <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
         <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 max-w-sm w-full">
           <h2 className="text-lg font-semibold">{error.message}</h2>
+
           {error.hint && (
             <p className="text-sm text-gray-600">{error.hint}</p>
           )}
@@ -92,6 +101,7 @@ export default function ResultsPage() {
             >
               Try again
             </button>
+
             <button
               onClick={() => window.location.reload()}
               className="flex-1 border py-2 rounded-lg text-sm"
@@ -114,7 +124,10 @@ export default function ResultsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <main
+        className="min-h-screen flex items-center justify-center bg-gray-50 p-6"
+        aria-live="polite"
+      >
         <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 max-w-sm w-full">
           <h2 className="text-lg font-semibold">
             Analyzing your conversation…
@@ -194,7 +207,10 @@ export default function ResultsPage() {
           ✅ Copy this reply & send
         </button>
 
-        <RewriteButtons onRewrite={runAnalysis} />
+        <RewriteButtons
+          onRewrite={runAnalysis}
+          disabled={loading}
+        />
       </section>
 
       {/* ALTERNATIVE */}
@@ -226,15 +242,18 @@ function truncate(text: string, lines = 4) {
 
 function RewriteButtons({
   onRewrite,
+  disabled,
 }: {
   onRewrite: (style: string) => Promise<void> | void;
+  disabled?: boolean;
 }) {
   const styles = ["Softer", "More confident", "Shorter"];
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleRewrite(style: string) {
-    if (loading) return;
+    if (loading || disabled) return;
+
     setActive(style);
     setLoading(true);
     try {
@@ -250,10 +269,15 @@ function RewriteButtons({
         <button
           key={style}
           onClick={() => handleRewrite(style)}
-          className={`text-sm px-3 py-1 rounded-full border ${
+          disabled={loading || disabled}
+          className={`text-sm px-3 py-1 rounded-full border transition ${
             active === style
               ? "border-blue-500 bg-blue-100 text-blue-700"
               : "border-gray-300"
+          } ${
+            loading || disabled
+              ? "opacity-50 cursor-not-allowed"
+              : ""
           }`}
         >
           {style}

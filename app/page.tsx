@@ -18,18 +18,26 @@ export default function HomePage() {
       <div className="w-full max-w-xl flex flex-col">
 
         {/* HERO COPY */}
-        <div className="mb-8 text-center space-y-3">
+        <div className="mb-8 text-center space-y-4">
           <h1 className="text-3xl font-semibold text-gray-900">
             Think before you reply.
           </h1>
 
-          <p className="text-base md:text-lg text-gray-600">
-            Understand what’s really happening in a conversation —
-            and get a safe, confident reply.
+          {/* ONE-LINE DEFINITION */}
+          <p className="text-base md:text-lg text-gray-700">
+            Paste a conversation. Get clarity, risks, and the best reply —
+            before you send.
           </p>
 
-          <p className="text-sm text-gray-500">
-            Works for WhatsApp, work chats, dating, and awkward situations.
+          {/* MICRO STEPS */}
+          <div className="text-sm text-gray-500 space-y-1">
+            <p>1. Paste the conversation</p>
+            <p>2. Choose the context</p>
+            <p>3. Copy a clean, confident reply</p>
+          </div>
+
+          <p className="text-xs text-gray-400 pt-2">
+            Works for work chats, dating, WhatsApp, and awkward situations.
           </p>
         </div>
 
@@ -58,7 +66,7 @@ export default function HomePage() {
                      disabled:opacity-50 disabled:cursor-not-allowed
                      hover:bg-blue-700"
         >
-          Analyze conversation →
+          Get clarity & reply →
         </button>
 
         <p className="mt-3 text-xs text-gray-400 text-center">
