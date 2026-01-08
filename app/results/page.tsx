@@ -41,7 +41,7 @@ export default function ResultsPage() {
         setStepIndex((prev) =>
           prev < loadingSteps.length - 1 ? prev + 1 : prev
         );
-      }, 1200);
+      }, 1000);
 
       const result = await analyzeConversation(
         content,
