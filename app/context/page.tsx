@@ -27,7 +27,7 @@ const INTENTS = [
   },
   {
     id: "conflict",
-    title: ⚠️ Sensitive / Conflict",
+    title: "⚠️ Sensitive / Conflict",
     desc: "Tension, boundaries, rejection, misunderstandings",
     type: "Conflict",
     goal: "Be calm",
