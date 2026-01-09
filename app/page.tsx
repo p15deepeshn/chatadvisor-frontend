@@ -20,24 +20,24 @@ export default function HomePage() {
         {/* HERO COPY */}
         <div className="mb-8 text-center space-y-4">
           <h1 className="text-3xl font-semibold text-gray-900">
-            Think before you reply.
+            Say it right.
           </h1>
 
-          {/* ONE-LINE DEFINITION */}
+          {/* ONE-LINE POSITIONING */}
           <p className="text-base md:text-lg text-gray-700">
-            Paste a conversation. Get clarity, risks, and the best reply —
-            before you send.
+            Paste a conversation. Get better word choices —
+            confident, natural, and right for the moment.
           </p>
 
-          {/* MICRO STEPS */}
+          {/* MICRO VALUE PROPS */}
           <div className="text-sm text-gray-500 space-y-1">
-            <p>1. Paste the conversation</p>
-            <p>2. Choose the context</p>
-            <p>3. Copy a clean, confident reply</p>
+            <p>• You already know what you want to say</p>
+            <p>• ChatAdvisor helps you phrase it better</p>
+            <p>• Choose the tone. Copy. Send.</p>
           </div>
 
           <p className="text-xs text-gray-400 pt-2">
-            Works for work chats, dating, WhatsApp, and awkward situations.
+            Works for dating, work chats, WhatsApp, and everyday conversations.
           </p>
         </div>
 
@@ -53,7 +53,7 @@ export default function HomePage() {
           />
 
           <p className="mt-2 text-xs text-gray-400">
-            Tip: Paste the full chat for better suggestions.
+            Tip: Paste the full chat or message you’re replying to.
           </p>
         </div>
 
@@ -66,7 +66,7 @@ export default function HomePage() {
                      disabled:opacity-50 disabled:cursor-not-allowed
                      hover:bg-blue-700"
         >
-          Get clarity & reply →
+          Help me phrase this →
         </button>
 
         <p className="mt-3 text-xs text-gray-400 text-center">
