@@ -5,7 +5,7 @@ import { analyzeConversation } from "@/services/analyze";
 import { AnalysisResult } from "@/types/analysis";
 
 /* =====================
-   LOADING STEPS
+   LOADING STEPS (INITIAL ONLY)
 ===================== */
 
 const loadingSteps = [
@@ -22,7 +22,9 @@ export default function ResultsPage() {
   const [showRisk, setShowRisk] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function runAnalysis(rewriteStyle?: string) {
+  /* ---------- FULL ANALYSIS (ON LOAD) ---------- */
+
+  async function runAnalysis() {
     try {
       setLoading(true);
       setError(null);
@@ -41,14 +43,9 @@ export default function ResultsPage() {
         setStepIndex((prev) =>
           prev < loadingSteps.length - 1 ? prev + 1 : prev
         );
-      }, 1000);
+      }, 900);
 
-      const result = await analyzeConversation(
-        content,
-        type,
-        goal,
-        rewriteStyle
-      );
+      const result = await analyzeConversation(content, type, goal);
 
       clearInterval(timer);
       setData(result);
@@ -56,6 +53,31 @@ export default function ResultsPage() {
       setError("We couldn’t analyze this conversation. Please try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  /* ---------- FAST REWRITE (NO LOADER) ---------- */
+
+  async function rewriteReply(style: string) {
+    if (!data) return;
+
+    try {
+      const content = sessionStorage.getItem("conversation");
+      const type = sessionStorage.getItem("type");
+      const goal = sessionStorage.getItem("goal");
+
+      if (!content || !type || !goal) return;
+
+      const result = await analyzeConversation(
+        content,
+        type,
+        goal,
+        style
+      );
+
+      setData(result);
+    } catch {
+      // silent fail for rewrites
     }
   }
 
@@ -74,7 +96,7 @@ export default function ResultsPage() {
           <h2 className="text-lg font-semibold">Something went wrong</h2>
           <p className="text-sm text-gray-600">{error}</p>
           <button
-            onClick={() => runAnalysis()}
+            onClick={runAnalysis}
             className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold"
           >
             Try again
@@ -85,7 +107,7 @@ export default function ResultsPage() {
   }
 
   /* =====================
-     LOADING STATE
+     LOADING STATE (INITIAL ONLY)
   ===================== */
 
   if (loading) {
@@ -162,8 +184,7 @@ export default function ResultsPage() {
           Copy this reply & send
         </button>
 
-        {/* TONE OPTIONS */}
-        <RewriteButtons onRewrite={runAnalysis} />
+        <RewriteButtons onRewrite={rewriteReply} />
       </section>
 
       <Section title="Alternative reply">
