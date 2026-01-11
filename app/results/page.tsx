@@ -217,7 +217,13 @@ function RewriteButtons({
 }: {
   onRewrite: (style: string) => Promise<void> | void;
 }) {
-  const styles = ["Softer", "More confident", "Shorter"];
+  const styles = [
+  "Softer",
+  "More confident",
+  "More expressive",
+  "Shorter",
+];
+
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
