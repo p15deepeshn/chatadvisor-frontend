@@ -15,12 +15,36 @@ const loadingSteps = [
   "Drafting the best reply",
 ];
 
+/* =====================
+   COPY HELPER (MOBILE SAFE)
+===================== */
+
+function copyToClipboard(text: string, onSuccess?: () => void) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      onSuccess?.();
+    });
+  } else {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    onSuccess?.();
+  }
+}
+
 export default function ResultsPage() {
   const [data, setData] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
   const [showRisk, setShowRisk] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   /* ---------- FULL ANALYSIS (ON LOAD) ---------- */
 
@@ -46,7 +70,6 @@ export default function ResultsPage() {
       }, 900);
 
       const result = await analyzeConversation(content, type, goal);
-
       clearInterval(timer);
       setData(result);
     } catch {
@@ -65,7 +88,6 @@ export default function ResultsPage() {
       const content = sessionStorage.getItem("conversation");
       const type = sessionStorage.getItem("type");
       const goal = sessionStorage.getItem("goal");
-
       if (!content || !type || !goal) return;
 
       const result = await analyzeConversation(
@@ -74,10 +96,9 @@ export default function ResultsPage() {
         goal,
         style
       );
-
       setData(result);
     } catch {
-      // silent fail for rewrites
+      // silent fail
     }
   }
 
@@ -107,7 +128,7 @@ export default function ResultsPage() {
   }
 
   /* =====================
-     LOADING STATE (INITIAL ONLY)
+     LOADING STATE
   ===================== */
 
   if (loading) {
@@ -177,21 +198,39 @@ export default function ResultsPage() {
 
         <button
           onClick={() =>
-            navigator.clipboard.writeText(data.best_reply)
+            copyToClipboard(data.best_reply, () => {
+              setCopied("best");
+              setTimeout(() => setCopied(null), 1500);
+            })
           }
           className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold"
         >
-          Copy this reply & send
+          {copied === "best" ? "Copied ✓" : "Copy this reply & send"}
         </button>
 
         <RewriteButtons onRewrite={rewriteReply} />
       </section>
 
-      <Section title="Alternative reply">
+      {/* ALTERNATIVE */}
+      <section className="bg-white rounded-xl p-4 space-y-3">
+        <h3 className="font-semibold">Alternative reply</h3>
+
         <p className="whitespace-pre-wrap">
           {truncate(data.alternative_reply, 4)}
         </p>
-      </Section>
+
+        <button
+          onClick={() =>
+            copyToClipboard(data.alternative_reply, () => {
+              setCopied("alt");
+              setTimeout(() => setCopied(null), 1500);
+            })
+          }
+          className="w-full border border-gray-300 py-2 rounded-lg text-sm"
+        >
+          {copied === "alt" ? "Copied ✓" : "Copy alternative reply"}
+        </button>
+      </section>
 
       <Section title="Avoid saying">
         <p>{data.avoid_saying}</p>
@@ -218,11 +257,11 @@ function RewriteButtons({
   onRewrite: (style: string) => Promise<void> | void;
 }) {
   const styles = [
-  "Softer",
-  "More confident",
-  "More expressive",
-  "Shorter",
-];
+    "Softer",
+    "More confident",
+    "More expressive",
+    "Shorter",
+  ];
 
   const [active, setActive] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -239,7 +278,7 @@ function RewriteButtons({
   }
 
   return (
-    <div className="flex flex-wrap gap-2 pt-2 items-center">
+    <div className="flex flex-wrap gap-2 pt-2">
       {styles.map((style) => (
         <button
           key={style}
@@ -249,19 +288,11 @@ function RewriteButtons({
               active === style
                 ? "border-blue-500 bg-blue-100 text-blue-700"
                 : "border-gray-300 text-gray-700"
-            }
-            ${loading ? "opacity-50 cursor-not-allowed" : "hover:border-blue-400"}
-          `}
+            }`}
         >
           {style}
         </button>
       ))}
-
-      {loading && (
-        <span className="text-xs text-gray-500 ml-2">
-          Updating reply…
-        </span>
-      )}
     </div>
   );
 }
