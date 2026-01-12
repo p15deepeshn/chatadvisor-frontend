@@ -4,10 +4,6 @@ import { useEffect, useState } from "react";
 import { analyzeConversation } from "@/services/analyze";
 import { AnalysisResult } from "@/types/analysis";
 
-/* =====================
-   LOADING STEPS (INITIAL ONLY)
-===================== */
-
 const loadingSteps = [
   "Reading the conversation",
   "Understanding intent and tone",
@@ -15,40 +11,17 @@ const loadingSteps = [
   "Drafting the best reply",
 ];
 
-/* =====================
-   COPY HELPER (MOBILE SAFE)
-===================== */
-
-function copyToClipboard(text: string, onSuccess?: () => void) {
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).then(() => {
-      onSuccess?.();
-    });
-  } else {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
-    onSuccess?.();
-  }
-}
-
 export default function ResultsPage() {
   const [data, setData] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [stepIndex, setStepIndex] = useState(0);
   const [showRisk, setShowRisk] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [rewriting, setRewriting] = useState(false);
 
-  /* ---------- FULL ANALYSIS (ON LOAD) ---------- */
+  /* ---------- INITIAL FULL ANALYSIS ---------- */
 
-  async function runAnalysis() {
+  async function runInitialAnalysis() {
     try {
       setLoading(true);
       setError(null);
@@ -64,16 +37,16 @@ export default function ResultsPage() {
       }
 
       const timer = setInterval(() => {
-        setStepIndex((prev) =>
-          prev < loadingSteps.length - 1 ? prev + 1 : prev
+        setStepIndex((p) =>
+          p < loadingSteps.length - 1 ? p + 1 : p
         );
-      }, 900);
+      }, 800);
 
       const result = await analyzeConversation(content, type, goal);
       clearInterval(timer);
       setData(result);
     } catch {
-      setError("We couldn’t analyze this conversation. Please try again.");
+      setError("Couldn’t analyze this conversation. Try again.");
     } finally {
       setLoading(false);
     }
@@ -81,13 +54,15 @@ export default function ResultsPage() {
 
   /* ---------- FAST REWRITE (NO LOADER) ---------- */
 
-  async function rewriteReply(style: string) {
+  async function rewrite(style: string) {
     if (!data) return;
-
     try {
+      setRewriting(true);
+
       const content = sessionStorage.getItem("conversation");
       const type = sessionStorage.getItem("type");
       const goal = sessionStorage.getItem("goal");
+
       if (!content || !type || !goal) return;
 
       const result = await analyzeConversation(
@@ -96,19 +71,18 @@ export default function ResultsPage() {
         goal,
         style
       );
+
       setData(result);
-    } catch {
-      // silent fail
+    } finally {
+      setRewriting(false);
     }
   }
 
   useEffect(() => {
-    runAnalysis();
+    runInitialAnalysis();
   }, []);
 
-  /* =====================
-     ERROR STATE
-  ===================== */
+  /* ---------- ERROR ---------- */
 
   if (error) {
     return (
@@ -117,7 +91,7 @@ export default function ResultsPage() {
           <h2 className="text-lg font-semibold">Something went wrong</h2>
           <p className="text-sm text-gray-600">{error}</p>
           <button
-            onClick={runAnalysis}
+            onClick={runInitialAnalysis}
             className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold"
           >
             Try again
@@ -127,9 +101,7 @@ export default function ResultsPage() {
     );
   }
 
-  /* =====================
-     LOADING STATE
-  ===================== */
+  /* ---------- LOADING (ONLY ON FIRST LOAD) ---------- */
 
   if (loading) {
     return (
@@ -138,23 +110,16 @@ export default function ResultsPage() {
           <h2 className="text-lg font-semibold">
             Analyzing your conversation…
           </h2>
-
           <ul className="text-sm space-y-2">
-            {loadingSteps.map((step, index) => (
+            {loadingSteps.map((s, i) => (
               <li
-                key={step}
-                className={
-                  index <= stepIndex ? "text-gray-900" : "text-gray-400"
-                }
+                key={s}
+                className={i <= stepIndex ? "text-gray-900" : "text-gray-400"}
               >
-                {index <= stepIndex ? "✓" : "•"} {step}
+                {i <= stepIndex ? "✓" : "•"} {s}
               </li>
             ))}
           </ul>
-
-          <p className="text-xs text-gray-500">
-            This usually takes a few seconds.
-          </p>
         </div>
       </main>
     );
@@ -162,17 +127,17 @@ export default function ResultsPage() {
 
   if (!data) return null;
 
-  /* =====================
-     RESULTS
-  ===================== */
+  /* ---------- RESULTS ---------- */
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 space-y-6 max-w-2xl mx-auto">
 
+      {/* WHAT’S HAPPENING */}
       <Section title="What’s happening">
         <p>{truncate(data.summary, 2)}</p>
       </Section>
 
+      {/* RISK */}
       {data.risk && (
         <Section title="Potential risk">
           <button
@@ -181,14 +146,11 @@ export default function ResultsPage() {
           >
             {showRisk ? "Hide risk" : "Show risk"}
           </button>
-
-          {showRisk && (
-            <p className="mt-2">{truncate(data.risk, 3)}</p>
-          )}
+          {showRisk && <p className="mt-2">{truncate(data.risk, 3)}</p>}
         </Section>
       )}
 
-      {/* BEST REPLY */}
+      {/* BEST REPLY (PRIMARY) */}
       <section className="bg-blue-50 border border-blue-400 rounded-xl p-4 space-y-3">
         <h3 className="font-semibold text-lg">Best reply</h3>
 
@@ -197,41 +159,31 @@ export default function ResultsPage() {
         </p>
 
         <button
-          onClick={() =>
-            copyToClipboard(data.best_reply, () => {
-              setCopied("best");
-              setTimeout(() => setCopied(null), 1500);
-            })
-          }
+          onClick={() => navigator.clipboard.writeText(data.best_reply)}
           className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold"
         >
-          {copied === "best" ? "Copied ✓" : "Copy this reply & send"}
+          ✅ Copy this reply & send
         </button>
 
-        <RewriteButtons onRewrite={rewriteReply} />
+        <RewriteButtons onRewrite={rewrite} loading={rewriting} />
       </section>
 
       {/* ALTERNATIVE */}
-      <section className="bg-white rounded-xl p-4 space-y-3">
-        <h3 className="font-semibold">Alternative reply</h3>
-
+      <Section title="Alternative reply">
         <p className="whitespace-pre-wrap">
           {truncate(data.alternative_reply, 4)}
         </p>
-
         <button
           onClick={() =>
-            copyToClipboard(data.alternative_reply, () => {
-              setCopied("alt");
-              setTimeout(() => setCopied(null), 1500);
-            })
+            navigator.clipboard.writeText(data.alternative_reply)
           }
-          className="w-full border border-gray-300 py-2 rounded-lg text-sm"
+          className="mt-2 text-sm text-blue-600"
         >
-          {copied === "alt" ? "Copied ✓" : "Copy alternative reply"}
+          Copy alternative
         </button>
-      </section>
+      </Section>
 
+      {/* AVOID */}
       <Section title="Avoid saying">
         <p>{data.avoid_saying}</p>
       </Section>
@@ -239,67 +191,41 @@ export default function ResultsPage() {
   );
 }
 
-/* =====================
-   HELPERS
-===================== */
+/* ---------- HELPERS ---------- */
 
 function truncate(text: string, lines = 4) {
   return text.split("\n").slice(0, lines).join("\n");
 }
 
-/* =====================
-   REWRITE BUTTONS
-===================== */
-
 function RewriteButtons({
   onRewrite,
+  loading,
 }: {
-  onRewrite: (style: string) => Promise<void> | void;
+  onRewrite: (style: string) => void;
+  loading: boolean;
 }) {
-  const styles = [
-    "Softer",
-    "More confident",
-    "More expressive",
-    "Shorter",
-  ];
-
-  const [active, setActive] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleClick(style: string) {
-    if (loading) return;
-    setActive(style);
-    setLoading(true);
-    try {
-      await onRewrite(style);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const styles = ["Softer", "More confident", "More expressive", "Shorter"];
 
   return (
     <div className="flex flex-wrap gap-2 pt-2">
-      {styles.map((style) => (
+      {styles.map((s) => (
         <button
-          key={style}
-          onClick={() => handleClick(style)}
-          className={`text-sm px-3 py-1 rounded-full border transition
-            ${
-              active === style
-                ? "border-blue-500 bg-blue-100 text-blue-700"
-                : "border-gray-300 text-gray-700"
-            }`}
+          key={s}
+          onClick={() => onRewrite(s)}
+          disabled={loading}
+          className="text-sm px-3 py-1 rounded-full border border-gray-300 hover:border-blue-400 disabled:opacity-50"
         >
-          {style}
+          {s}
         </button>
       ))}
+      {loading && (
+        <span className="text-xs text-gray-500 ml-2">
+          Updating reply…
+        </span>
+      )}
     </div>
   );
 }
-
-/* =====================
-   SECTION
-===================== */
 
 function Section({
   title,

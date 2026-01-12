@@ -18,7 +18,6 @@ export default function Loading() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
       <div className="text-center space-y-4 max-w-sm w-full">
-
         {/* Spinner */}
         <div className="flex justify-center">
           <div className="h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -26,15 +25,15 @@ export default function Loading() {
 
         {/* Primary message */}
         <p className="text-lg font-medium text-gray-900">
-          {step === 0 && "Understanding the message…"}
-          {step === 1 && "Checking intent, risks, and tone…"}
-          {step === 2 && "Almost there…"}
+          {step === 0 && "Reading the message…"}
+          {step === 1 && "Preparing a reply you can send…"}
+          {step === 2 && "Almost done…"}
         </p>
 
         {/* Secondary reassurance */}
         <p className="text-sm text-gray-500">
           {step < 2
-            ? "Preparing a clean reply you can send"
+            ? "This usually takes a few seconds"
             : "Thanks for waiting"}
         </p>
       </div>

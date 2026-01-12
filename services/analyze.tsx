@@ -12,6 +12,7 @@ export async function analyzeConversation(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Cache-Control": "no-store", // important: avoid stale replies
     },
     body: JSON.stringify({
       content,
@@ -22,8 +23,10 @@ export async function analyzeConversation(
   });
 
   if (!response.ok) {
-    throw new Error("Failed to analyze conversation");
+    const text = await response.text();
+    throw new Error(text || "Failed to analyze conversation");
   }
 
-  return response.json();
+  const data = (await response.json()) as AnalysisResult;
+  return data;
 }
